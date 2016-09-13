@@ -115,6 +115,41 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+HBITMAP bitmaps[5];
+HBITMAP PrevBitmap;
+int curBitmap = -1;
+bool static flag = false, flag1 = false, flag2 = false, flag3 = true;
+
+void CrBitmap(HDC hdc, RECT rect)
+{
+	int i;
+	HDC hdcMem = CreateCompatibleDC(hdc);
+	HBITMAP hBitmap = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
+	HANDLE oldBitmap = SelectObject(hdcMem, hBitmap);
+	BitBlt(hdcMem, 0, 0, rect.right, rect.bottom, hdc, 0, 0, SRCCOPY);
+	PrevBitmap = bitmaps[0];
+	if (curBitmap<4)
+	{
+		curBitmap++;
+		bitmaps[curBitmap] = hBitmap;
+
+	}
+	else
+	{
+		for (i = 0; i<4; i++)
+		{
+			bitmaps[i] = bitmaps[i + 1];
+
+		}
+
+		bitmaps[4] = hBitmap;
+	}
+
+	SelectObject(hdcMem, oldBitmap);
+	DeleteObject(oldBitmap);
+	DeleteDC(hdcMem);
+
+}
 //
 //  ФУНКЦИЯ: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -125,6 +160,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY — отправить сообщение о выходе и вернуться
 //
 //
+BOOL fDraw = FALSE;
+POINT ptPrevious = { 0 };
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HMENU static MainMenu = CreateMenu();
@@ -135,44 +173,39 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	HMENU static SubMenuAbout = CreateMenu();
 	HMENU static SubMenuColor = CreateMenu();
 
+	static HBRUSH hBrush;
+	static HPEN hPen;
+	static COLORREF color;
+	DWORD dColors[3] = { 255, 255, 255 };
+	CHOOSECOLOR cc;
+	
+	HDC hdc;
+	BOOL bRet = FALSE;
+	BOOL bCmd = FALSE;
+	int wmId = LOWORD(wParam);
+	int wmEvent = HIWORD(wParam);
+
+	cc.Flags = CC_RGBINIT | CC_FULLOPEN;
+	cc.hInstance = NULL;
+	cc.hwndOwner = hWnd;
+	cc.lCustData = 0L;
+	cc.lpCustColors = dColors;
+	cc.lpfnHook = NULL;
+	cc.lStructSize = sizeof(cc);
+	cc.rgbResult = RGB(0x80, 0x80, 0x80);
+
     switch (message)
     {
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Разобрать выбор в меню:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
-            EndPaint(hWnd, &ps);
-        }
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
 	case WM_CREATE:
 		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuFile, L"File");
 		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuDraw, L"Draw");
 		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuAction, L"Action");
 		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuWidth, L"Width");
-		AppendMenu(MainMenu, MF_POPUP,(UINT_PTR)SubMenuAbout, L"About");
+		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuAbout, L"About");
 		AppendMenu(SubMenuFile, MF_STRING, 0, L"Open");
 		AppendMenu(SubMenuFile, MF_STRING, 1, L"Save");
 		AppendMenu(SubMenuFile, MF_STRING, 2, L"Print");
+		AppendMenu(SubMenuFile, MF_STRING, IDM_EXIT, L"Exit");
 		AppendMenu(SubMenuDraw, MF_STRING, 10, L"Pen");
 		AppendMenu(SubMenuDraw, MF_STRING, 11, L"Line");
 		AppendMenu(SubMenuDraw, MF_STRING, 12, L"Ellipse");
@@ -188,11 +221,64 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		AppendMenu(SubMenuWidth, MF_STRING, 43, L"4");
 		AppendMenu(SubMenuWidth, MF_STRING, 44, L"5");
 		AppendMenu(SubMenuWidth, MF_STRING, 45, L"6");
-		AppendMenu(SubMenuAbout, MF_STRING, 51, L"About");
+		AppendMenu(SubMenuAbout, MF_STRING, IDM_ABOUT, L"About");
 		AppendMenu(SubMenuColor, MF_STRING, 61, L"Pen");
 		AppendMenu(SubMenuColor, MF_STRING, 62, L"Brush");
 		SetMenu(hWnd, MainMenu);
+		break;
+	case WM_INITDIALOG:
+		hPen = CreatePen(PS_SOLID, 3, RGB(128, 0, 0));
+		break;
+    case WM_COMMAND:
+        {            
+            switch (wmId)
+            {	
+            case IDM_ABOUT:
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                break;
+            case IDM_EXIT:
+                DestroyWindow(hWnd);
+                break;
+            default:
+                return DefWindowProc(hWnd, message, wParam, lParam);
+            }
+        }
         break;
+
+	case WM_LBUTTONDOWN:		
+		fDraw = TRUE;
+		ptPrevious.x = LOWORD(lParam);
+		ptPrevious.y = HIWORD(lParam);
+		break;
+	case WM_LBUTTONUP:
+		if (fDraw)
+		{
+			hdc = GetDC(hWnd);
+			MoveToEx(hdc, ptPrevious.x, ptPrevious.y, NULL);
+			LineTo(hdc, LOWORD(lParam), HIWORD(lParam));
+			ReleaseDC(hWnd, hdc);
+			fDraw = FALSE;
+		}
+		break;
+	case WM_MOUSEMOVE:		
+		if (fDraw)
+		{
+			hdc = GetDC(hWnd);
+			MoveToEx(hdc, ptPrevious.x, ptPrevious.y, NULL);
+			LineTo(hdc, ptPrevious.x = LOWORD(lParam),ptPrevious.y = HIWORD(lParam));
+			ReleaseDC(hWnd, hdc);
+		}		
+		break;
+    case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hWnd, &ps);
+            // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
+            EndPaint(hWnd, &ps);
+        }
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);	
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
