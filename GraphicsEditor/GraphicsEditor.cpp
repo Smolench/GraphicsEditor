@@ -3,6 +3,10 @@
 
 #include "stdafx.h"
 #include "GraphicsEditor.h"
+#include <windows.h>
+#include <CommDlg.h>
+#include <stdio.h>
+#include <string>
 
 #define MAX_LOADSTRING 100
 
@@ -123,6 +127,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	HMENU static MainMenu = CreateMenu();
+	HMENU static SubMenuDraw = CreateMenu();
+	HMENU static SubMenuAction = CreateMenu();
+	HMENU static SubMenuFile = CreateMenu();
+	HMENU static SubMenuWidth = CreateMenu();
+	HMENU static SubMenuAbout = CreateMenu();
+	HMENU static SubMenuColor = CreateMenu();
+
     switch (message)
     {
     case WM_COMMAND:
@@ -152,6 +164,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_DESTROY:
         PostQuitMessage(0);
+	case WM_CREATE:
+		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuFile, L"File");
+		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuDraw, L"Draw");
+		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuAction, L"Action");
+		AppendMenu(MainMenu, MF_POPUP, (UINT_PTR)SubMenuWidth, L"Width");
+		AppendMenu(MainMenu, MF_POPUP,(UINT_PTR)SubMenuAbout, L"About");
+		AppendMenu(SubMenuFile, MF_STRING, 0, L"Open");
+		AppendMenu(SubMenuFile, MF_STRING, 1, L"Save");
+		AppendMenu(SubMenuFile, MF_STRING, 2, L"Print");
+		AppendMenu(SubMenuDraw, MF_STRING, 10, L"Pen");
+		AppendMenu(SubMenuDraw, MF_STRING, 11, L"Line");
+		AppendMenu(SubMenuDraw, MF_STRING, 12, L"Ellipse");
+		AppendMenu(SubMenuDraw, MF_STRING, 13, L"Rectangle");
+		AppendMenu(SubMenuDraw, MF_STRING, 14, L"Polyline");
+		AppendMenu(SubMenuDraw, MF_STRING, 15, L"Text");
+		AppendMenu(SubMenuAction, MF_STRING, 20, L"Eraser");
+		AppendMenu(SubMenuAction, MF_STRING, 21, L"Pan");
+		AppendMenu(SubMenuAction, MF_POPUP, (UINT_PTR)SubMenuColor, L"Color");
+		AppendMenu(SubMenuWidth, MF_STRING, 40, L"1");
+		AppendMenu(SubMenuWidth, MF_STRING, 41, L"2");
+		AppendMenu(SubMenuWidth, MF_STRING, 42, L"3");
+		AppendMenu(SubMenuWidth, MF_STRING, 43, L"4");
+		AppendMenu(SubMenuWidth, MF_STRING, 44, L"5");
+		AppendMenu(SubMenuWidth, MF_STRING, 45, L"6");
+		AppendMenu(SubMenuAbout, MF_STRING, 51, L"About");
+		AppendMenu(SubMenuColor, MF_STRING, 61, L"Pen");
+		AppendMenu(SubMenuColor, MF_STRING, 62, L"Brush");
+		SetMenu(hWnd, MainMenu);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
